@@ -21,10 +21,12 @@ class PrefixCommands(commands.Cog):
         await ctx.send(
             embed=embed(
                 "أوامر Alythia بالبريفكس !",
+                "**متاحة لكل الأعضاء**\n"
                 "`!help` `!ping` `!server` `!user` `!avatar`\n"
                 "`!balance` `!daily` `!work` `!pay` `!rich` `!profile`\n"
                 "`!rank` `!leaderboard`\n"
                 "`!coinflip` `!roll` `!8ball` `!choose`\n"
+                "\n**للإدارة فقط**\n"
                 "`!warn` `!warnings` `!clearwarnings`\n"
                 "`!clear` `!timeout` `!untimeout` `!ban` `!kick`\n\n"
                 "إعداد التذاكر والسحوبات والرتب التفاعلية متاح من أوامر Slash."
@@ -179,6 +181,20 @@ class PrefixCommands(commands.Cog):
             return
         deleted = await ctx.channel.purge(limit=max(1, min(amount, 100)) + 1)
         await ctx.send(embed=embed("تم التنظيف", f"تم حذف **{len(deleted) - 1}** رسالة."), delete_after=5)
+
+    @commands.command(name="ban")
+    @commands.guild_only()
+    @commands.has_permissions(ban_members=True)
+    async def ban(self, ctx: commands.Context[commands.Bot], member: discord.Member, *, reason: str = "لم يتم تحديد سبب") -> None:
+        await member.ban(reason=reason)
+        await ctx.send(embed=embed("تم الحظر", f"تم حظر **{member_name(member)}**.\nالسبب: {reason}"))
+
+    @commands.command(name="kick")
+    @commands.guild_only()
+    @commands.has_permissions(kick_members=True)
+    async def kick(self, ctx: commands.Context[commands.Bot], member: discord.Member, *, reason: str = "لم يتم تحديد سبب") -> None:
+        await member.kick(reason=reason)
+        await ctx.send(embed=embed("تم الطرد", f"تم طرد **{member_name(member)}**.\nالسبب: {reason}"))
 
     @commands.command(name="timeout")
     @commands.guild_only()

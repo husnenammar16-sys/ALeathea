@@ -34,6 +34,7 @@ class Logs(commands.Cog):
         self.database = database
 
     @logs.command(name="setup", description="تحديد قناة اللوقز")
+    @app_commands.default_permissions(manage_guild=True)
     @app_commands.checks.has_permissions(manage_guild=True)
     @app_commands.describe(channel="قناة تسجيل الأحداث")
     async def setup_logs(

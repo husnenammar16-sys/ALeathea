@@ -21,6 +21,7 @@ class AutoMod(commands.Cog):
         self.recent: dict[tuple[int, int], tuple[str, float]] = {}
 
     @automod.command(name="setup", description="تفعيل الحماية من السبام والروابط")
+    @app_commands.default_permissions(manage_guild=True)
     @app_commands.checks.has_permissions(manage_guild=True)
     async def setup_automod(self, interaction: discord.Interaction) -> None:
         self.database.set_setting(interaction.guild_id, "automod_enabled", 1)
@@ -30,6 +31,7 @@ class AutoMod(commands.Cog):
         )
 
     @automod.command(name="disable", description="تعطيل الحماية التلقائية")
+    @app_commands.default_permissions(manage_guild=True)
     @app_commands.checks.has_permissions(manage_guild=True)
     async def disable_automod(self, interaction: discord.Interaction) -> None:
         self.database.set_setting(interaction.guild_id, "automod_enabled", 0)

@@ -19,24 +19,21 @@ class General(commands.Cog):
     @app_commands.command(name="help", description="عرض جميع أوامر البوت")
     async def help(self, interaction: discord.Interaction) -> None:
         message = (
-            "**أوامر المعلومات**\n"
-            "`/help` `/ping` `/server` `/user` `/avatar`\n\n"
-            "**أوامر المجتمع**\n"
-            "`/ticket setup` `/suggest setup` `/suggest send`\n\n"
-            "**الاقتصاد والمستويات**\n"
+            "**أوامر عامة لكل الأعضاء**\n"
+            "`/help` `/ping` `/server` `/user` `/avatar`\n"
             "`/balance` `/daily` `/work` `/pay` `/rich` `/profile`\n"
-            "`/rank` `/leaderboard`\n\n"
-            "**الترفيه والفعاليات**\n"
-            "`/coinflip` `/roll` `/eightball` `/choose`\n"
-            "`/giveaway start` `/giveaway end`\n\n"
-            "**أوامر الإدارة**\n"
-            "`/welcome setup` `/welcome disable` `/logs setup`\n"
+            "`/rank` `/leaderboard` `/coinflip` `/roll` `/eightball` `/choose`\n"
+            "`/ticket` لفتح تذكرة و`/suggest send` لإرسال اقتراح.\n\n"
+            "**أوامر الإدارة فقط**\n"
+            "`/ticket setup` `/suggest setup` `/logs setup`\n"
+            "`/welcome setup` `/welcome disable`\n"
             "`/autorole setup` `/autorole disable` `/reactionrole setup`\n"
             "`/automod setup` `/automod disable`\n"
+            "`/giveaway start` `/giveaway end`\n"
             "`/custom add` `/custom remove` `/custom list`\n"
             "`/ban` `/kick` `/timeout` `/untimeout` `/warn` `/warnings`\n"
             "`/clearwarnings` `/clear` `/lock` `/unlock`\n\n"
-            "الأوامر الحساسة متاحة للإدارة فقط."
+            "الأوامر الإدارية محمية بصلاحيات Discord المناسبة."
         )
         await interaction.response.send_message(
             embed=embed(f"{BOT_NAME} • مركز المساعدة", message), ephemeral=True

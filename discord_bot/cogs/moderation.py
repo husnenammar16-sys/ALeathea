@@ -16,6 +16,7 @@ class Moderation(commands.Cog):
         self.database = database
 
     @app_commands.command(name="ban", description="حظر عضو من السيرفر")
+    @app_commands.default_permissions(ban_members=True)
     @app_commands.checks.has_permissions(ban_members=True)
     @app_commands.describe(member="العضو", reason="سبب الحظر")
     async def ban(
@@ -31,6 +32,7 @@ class Moderation(commands.Cog):
         await send_log(self.bot, self.database, interaction.guild, "حظر عضو", f"{member} — {reason}", COLOUR_DANGER)
 
     @app_commands.command(name="kick", description="طرد عضو من السيرفر")
+    @app_commands.default_permissions(kick_members=True)
     @app_commands.checks.has_permissions(kick_members=True)
     @app_commands.describe(member="العضو", reason="سبب الطرد")
     async def kick(
@@ -46,6 +48,7 @@ class Moderation(commands.Cog):
         await send_log(self.bot, self.database, interaction.guild, "طرد عضو", f"{member} — {reason}", COLOUR_WARNING)
 
     @app_commands.command(name="timeout", description="تقييد عضو لمدة محددة")
+    @app_commands.default_permissions(moderate_members=True)
     @app_commands.checks.has_permissions(moderate_members=True)
     @app_commands.describe(member="العضو", minutes="المدة بالدقائق", reason="السبب")
     async def timeout(
@@ -62,6 +65,7 @@ class Moderation(commands.Cog):
         await send_log(self.bot, self.database, interaction.guild, "تقييد عضو", f"{member} — {reason}", COLOUR_WARNING)
 
     @app_commands.command(name="untimeout", description="إزالة تقييد عضو")
+    @app_commands.default_permissions(moderate_members=True)
     @app_commands.checks.has_permissions(moderate_members=True)
     @app_commands.describe(member="العضو")
     async def untimeout(self, interaction: discord.Interaction, member: discord.Member) -> None:
@@ -71,6 +75,7 @@ class Moderation(commands.Cog):
         )
 
     @app_commands.command(name="warn", description="تسجيل تحذير على عضو")
+    @app_commands.default_permissions(manage_messages=True)
     @app_commands.checks.has_permissions(manage_messages=True)
     @app_commands.describe(member="العضو", reason="سبب التحذير")
     async def warn(
@@ -107,6 +112,7 @@ class Moderation(commands.Cog):
         )
 
     @app_commands.command(name="warnings", description="عرض تحذيرات عضو")
+    @app_commands.default_permissions(manage_messages=True)
     @app_commands.checks.has_permissions(manage_messages=True)
     @app_commands.describe(member="العضو")
     async def warnings(self, interaction: discord.Interaction, member: discord.Member) -> None:
@@ -125,6 +131,7 @@ class Moderation(commands.Cog):
         )
 
     @app_commands.command(name="clearwarnings", description="حذف تحذيرات عضو")
+    @app_commands.default_permissions(manage_guild=True)
     @app_commands.checks.has_permissions(manage_guild=True)
     @app_commands.describe(member="العضو")
     async def clearwarnings(self, interaction: discord.Interaction, member: discord.Member) -> None:
@@ -135,6 +142,7 @@ class Moderation(commands.Cog):
         )
 
     @app_commands.command(name="clear", description="حذف رسائل من القناة")
+    @app_commands.default_permissions(manage_messages=True)
     @app_commands.checks.has_permissions(manage_messages=True)
     @app_commands.describe(amount="عدد الرسائل من 1 إلى 100")
     async def clear(self, interaction: discord.Interaction, amount: app_commands.Range[int, 1, 100]) -> None:
@@ -147,6 +155,7 @@ class Moderation(commands.Cog):
         )
 
     @app_commands.command(name="lock", description="قفل القناة الحالية")
+    @app_commands.default_permissions(manage_channels=True)
     @app_commands.checks.has_permissions(manage_channels=True)
     async def lock(self, interaction: discord.Interaction) -> None:
         if not isinstance(interaction.channel, discord.TextChannel):
@@ -160,6 +169,7 @@ class Moderation(commands.Cog):
         await interaction.response.send_message(embed=embed("تم قفل القناة", "لا يمكن للأعضاء إرسال رسائل حاليًا."))
 
     @app_commands.command(name="unlock", description="فتح القناة الحالية")
+    @app_commands.default_permissions(manage_channels=True)
     @app_commands.checks.has_permissions(manage_channels=True)
     async def unlock(self, interaction: discord.Interaction) -> None:
         if not isinstance(interaction.channel, discord.TextChannel):

@@ -56,6 +56,7 @@ class Giveaways(commands.Cog):
         self.finish_loop.cancel()
 
     @giveaway.command(name="start", description="بدء سحبة جديدة")
+    @app_commands.default_permissions(manage_guild=True)
     @app_commands.checks.has_permissions(manage_guild=True)
     @app_commands.describe(minutes="مدة السحبة بالدقائق", prize="الجائزة")
     async def start(
@@ -82,6 +83,7 @@ class Giveaways(commands.Cog):
         await interaction.response.send_message("تم بدء السحبة.", ephemeral=True)
 
     @giveaway.command(name="end", description="إنهاء سحبة واختيار فائز")
+    @app_commands.default_permissions(manage_guild=True)
     @app_commands.checks.has_permissions(manage_guild=True)
     @app_commands.describe(giveaway_id="رقم السحبة")
     async def end(self, interaction: discord.Interaction, giveaway_id: int) -> None:

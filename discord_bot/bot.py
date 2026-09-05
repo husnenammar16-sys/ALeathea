@@ -109,6 +109,24 @@ class AlythiaBot(commands.Bot):
         else:
             await interaction.response.send_message(message, ephemeral=True)
 
+    async def on_command_error(
+        self, context: commands.Context[commands.Bot], error: commands.CommandError
+    ) -> None:
+        if isinstance(error, commands.CommandNotFound):
+            return
+        if isinstance(error, commands.MissingPermissions):
+            message = "ليس لديك صلاحية لاستخدام هذا الأمر."
+        elif isinstance(error, commands.MissingRequiredArgument):
+            message = f"البيانات ناقصة. الاستخدام الصحيح: `!{context.command}` مع كل الخيارات المطلوبة."
+        elif isinstance(error, commands.BadArgument):
+            message = "البيانات المدخلة غير صحيحة. تأكد من منشن العضو أو كتابة الرقم بشكل صحيح."
+        elif isinstance(error, commands.NoPrivateMessage):
+            message = "هذا الأمر يعمل داخل السيرفر فقط."
+        else:
+            logger.exception("حدث خطأ في أمر البريفكس", exc_info=error)
+            message = "حدث خطأ غير متوقع أثناء تنفيذ الأمر."
+        await context.send(message, delete_after=8)
+
 
 def main() -> None:
     error = missing_configuration()

@@ -17,6 +17,7 @@ class Welcome(commands.Cog):
         self.database = database
 
     @welcome.command(name="setup", description="تحديد قناة الترحيب")
+    @app_commands.default_permissions(manage_guild=True)
     @app_commands.checks.has_permissions(manage_guild=True)
     @app_commands.describe(channel="القناة التي ستستقبل الأعضاء الجدد")
     async def setup_welcome(
@@ -29,6 +30,7 @@ class Welcome(commands.Cog):
         )
 
     @welcome.command(name="disable", description="تعطيل الترحيب")
+    @app_commands.default_permissions(manage_guild=True)
     @app_commands.checks.has_permissions(manage_guild=True)
     async def disable_welcome(self, interaction: discord.Interaction) -> None:
         self.database.set_setting(interaction.guild_id, "welcome_channel_id", None)

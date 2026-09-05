@@ -53,6 +53,7 @@ class Suggestions(commands.Cog):
         self.database = database
 
     @suggest.command(name="setup", description="تحديد قناة الاقتراحات")
+    @app_commands.default_permissions(manage_guild=True)
     @app_commands.checks.has_permissions(manage_guild=True)
     @app_commands.describe(channel="القناة التي ستظهر فيها الاقتراحات")
     async def setup_suggestions(

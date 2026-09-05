@@ -16,6 +16,7 @@ class ReactionRoles(commands.Cog):
         self.database = database
 
     @reactionrole.command(name="setup", description="إنشاء رتبة تفاعلية")
+    @app_commands.default_permissions(manage_roles=True)
     @app_commands.checks.has_permissions(manage_roles=True)
     @app_commands.describe(role="الرتبة", emoji="الإيموجي الذي سيضغطه العضو")
     async def setup_role(

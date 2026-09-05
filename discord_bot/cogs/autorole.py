@@ -15,6 +15,7 @@ class AutoRole(commands.Cog):
         self.database = database
 
     @autorole.command(name="setup", description="تحديد رتبة للأعضاء الجدد")
+    @app_commands.default_permissions(manage_roles=True)
     @app_commands.checks.has_permissions(manage_roles=True)
     @app_commands.describe(role="الرتبة التي سيحصل عليها العضو الجديد")
     async def setup_role(self, interaction: discord.Interaction, role: discord.Role) -> None:
@@ -28,6 +29,7 @@ class AutoRole(commands.Cog):
         )
 
     @autorole.command(name="disable", description="تعطيل الرتبة التلقائية")
+    @app_commands.default_permissions(manage_roles=True)
     @app_commands.checks.has_permissions(manage_roles=True)
     async def disable_role(self, interaction: discord.Interaction) -> None:
         self.database.set_setting(interaction.guild_id, "autorole_id", None)

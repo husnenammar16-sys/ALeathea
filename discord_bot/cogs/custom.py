@@ -15,6 +15,7 @@ class CustomCommands(commands.Cog):
         self.database = database
 
     @custom.command(name="add", description="إضافة أمر مخصص يبدأ بعلامة !")
+    @app_commands.default_permissions(manage_guild=True)
     @app_commands.checks.has_permissions(manage_guild=True)
     @app_commands.describe(name="اسم الأمر بدون !", response="الرد الذي سيرسله البوت")
     async def add(self, interaction: discord.Interaction, name: str, response: str) -> None:
@@ -29,6 +30,7 @@ class CustomCommands(commands.Cog):
         )
 
     @custom.command(name="remove", description="حذف أمر مخصص")
+    @app_commands.default_permissions(manage_guild=True)
     @app_commands.checks.has_permissions(manage_guild=True)
     @app_commands.describe(name="اسم الأمر بدون !")
     async def remove(self, interaction: discord.Interaction, name: str) -> None:
