@@ -26,6 +26,7 @@ from .cogs import (
     suggestions,
     tickets,
     welcome,
+    prefix,
 )
 
 logging.basicConfig(
@@ -81,6 +82,7 @@ class AlythiaBot(commands.Bot):
         await reaction_roles.setup(self, self.database)
         await automod.setup(self, self.database)
         await custom.setup(self, self.database)
+        await prefix.setup(self, self.database)
         synced = await self.tree.sync()
         logger.info("تم تسجيل %s أمر Slash.", len(synced))
 
