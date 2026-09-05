@@ -28,6 +28,7 @@ from .cogs import (
     tickets,
     welcome,
     prefix,
+    voice,
 )
 
 logging.basicConfig(
@@ -86,6 +87,7 @@ class AlythiaBot(commands.Bot):
         await custom.setup(self, self.database)
         await contact.setup(self, self.database)
         await prefix.setup(self, self.database)
+        await voice.setup(self, self.database)
         logger.info("تم تحميل %s أمر Slash للمزامنة.", len(self.tree.get_commands()))
 
     async def on_ready(self) -> None:

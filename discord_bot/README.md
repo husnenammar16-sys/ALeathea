@@ -28,7 +28,7 @@
    - Scopes: `bot` و `applications.commands`
    - Bot Permissions: `View Channels`, `Send Messages`, `Embed Links`, `Read Message History`,
      `Manage Channels`, `Manage Messages`, `Manage Roles`, `Kick Members`, `Ban Members`,
-     `Moderate Members`
+      `Moderate Members`, `Connect`
 6. افتح رابط الدعوة الذي تم توليده، واختر سيرفر Alythia، ثم وافق.
 
 لا تمنح Administrator إذا لم تكن تحتاجه؛ الصلاحيات المحددة أعلاه تكفي للأنظمة الموجودة.
@@ -53,6 +53,8 @@
 - `/automod setup` `/automod disable` — الحماية من السبام والروابط.
 - `/custom add` `/custom remove` `/custom list` — أوامر مخصصة بصيغة `!اسم_الأمر`.
 - `/call @member message` — إرسال نداء خاص لعضو، للإدارة فقط.
+- `/voice join` — دخول البوت إلى رومك الصوتي والبقاء فيه 24 ساعة.
+- `/voice leave` — إخراج البوت من الروم الصوتي.
 - `/ban`, `/kick`, `/timeout`, `/untimeout` — إدارة الأعضاء.
 - `/warn`, `/warnings`, `/clearwarnings` — نظام التحذيرات مع SQLite.
 - `/clear`, `/lock`, `/unlock` — إدارة القنوات والرسائل.
@@ -74,6 +76,8 @@
 !roll 20
 !clear 10
 !call @member تفضل راجع الإدارة
+!join
+!leave
 ```
 
 إعدادات الأنظمة المتقدمة مثل التذاكر والسحوبات والرتب التفاعلية تبقى متاحة من أوامر Slash لأنها تعتمد على خيارات وأزرار Discord.
