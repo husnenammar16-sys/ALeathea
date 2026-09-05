@@ -29,6 +29,7 @@ class PrefixCommands(commands.Cog):
                 "\n**للإدارة فقط**\n"
                 "`!warn` `!warnings` `!clearwarnings`\n"
                 "`!clear` `!timeout` `!untimeout` `!ban` `!kick`\n\n"
+                "`!call` أو `!نداء` لإرسال رسالة خاصة لعضو.\n\n"
                 "إعداد التذاكر والسحوبات والرتب التفاعلية متاح من أوامر Slash."
             )
         )

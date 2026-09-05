@@ -15,6 +15,7 @@ from .cogs import (
     autorole,
     automod,
     custom,
+    contact,
     economy,
     fun,
     general,
@@ -83,6 +84,7 @@ class AlythiaBot(commands.Bot):
         await reaction_roles.setup(self, self.database)
         await automod.setup(self, self.database)
         await custom.setup(self, self.database)
+        await contact.setup(self, self.database)
         await prefix.setup(self, self.database)
         logger.info("تم تحميل %s أمر Slash للمزامنة.", len(self.tree.get_commands()))
 

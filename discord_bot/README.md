@@ -52,6 +52,7 @@
 - `/reactionrole setup` — إنشاء رتبة تفاعلية بالإيموجي.
 - `/automod setup` `/automod disable` — الحماية من السبام والروابط.
 - `/custom add` `/custom remove` `/custom list` — أوامر مخصصة بصيغة `!اسم_الأمر`.
+- `/call @member message` — إرسال نداء خاص لعضو، للإدارة فقط.
 - `/ban`, `/kick`, `/timeout`, `/untimeout` — إدارة الأعضاء.
 - `/warn`, `/warnings`, `/clearwarnings` — نظام التحذيرات مع SQLite.
 - `/clear`, `/lock`, `/unlock` — إدارة القنوات والرسائل.
@@ -72,6 +73,7 @@
 !rank
 !roll 20
 !clear 10
+!call @member تفضل راجع الإدارة
 ```
 
 إعدادات الأنظمة المتقدمة مثل التذاكر والسحوبات والرتب التفاعلية تبقى متاحة من أوامر Slash لأنها تعتمد على خيارات وأزرار Discord.

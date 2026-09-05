@@ -31,6 +31,7 @@ class General(commands.Cog):
             "`/automod setup` `/automod disable`\n"
             "`/giveaway start` `/giveaway end`\n"
             "`/custom add` `/custom remove` `/custom list`\n"
+            "`/call` لإرسال نداء خاص إلى عضو\n"
             "`/ban` `/kick` `/timeout` `/untimeout` `/warn` `/warnings`\n"
             "`/clearwarnings` `/clear` `/lock` `/unlock`\n\n"
             "الأوامر الإدارية محمية بصلاحيات Discord المناسبة."
