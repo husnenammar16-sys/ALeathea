@@ -11,7 +11,22 @@ from discord.ext import commands
 
 from .config import TOKEN, missing_configuration
 from .database import Database
-from .cogs import autorole, general, logs, moderation, suggestions, tickets, welcome
+from .cogs import (
+    autorole,
+    automod,
+    custom,
+    economy,
+    fun,
+    general,
+    giveaways,
+    levels,
+    logs,
+    moderation,
+    reaction_roles,
+    suggestions,
+    tickets,
+    welcome,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -59,6 +74,13 @@ class AlythiaBot(commands.Bot):
         await autorole.setup(self, self.database)
         await tickets.setup(self, self.database)
         await suggestions.setup(self, self.database)
+        await economy.setup(self, self.database)
+        await levels.setup(self, self.database)
+        await fun.setup(self, self.database)
+        await giveaways.setup(self, self.database)
+        await reaction_roles.setup(self, self.database)
+        await automod.setup(self, self.database)
+        await custom.setup(self, self.database)
         synced = await self.tree.sync()
         logger.info("تم تسجيل %s أمر Slash.", len(synced))
 

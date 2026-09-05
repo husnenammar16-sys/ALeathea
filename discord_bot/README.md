@@ -45,6 +45,13 @@
 - `/ticket setup [category]` — نشر لوحة فتح التذاكر.
 - `/suggest setup #channel` — إعداد قناة الاقتراحات.
 - `/suggest send content` — إرسال اقتراح.
+- `/balance` `/daily` `/work` `/pay` `/rich` — نظام العملات.
+- `/rank` `/leaderboard` — نظام المستويات والخبرة.
+- `/coinflip` `/roll` `/eightball` `/choose` — أوامر ترفيهية.
+- `/giveaway start` `/giveaway end` — السحوبات.
+- `/reactionrole setup` — إنشاء رتبة تفاعلية بالإيموجي.
+- `/automod setup` `/automod disable` — الحماية من السبام والروابط.
+- `/custom add` `/custom remove` `/custom list` — أوامر مخصصة بصيغة `!اسم_الأمر`.
 - `/ban`, `/kick`, `/timeout`, `/untimeout` — إدارة الأعضاء.
 - `/warn`, `/warnings`, `/clearwarnings` — نظام التحذيرات مع SQLite.
 - `/clear`, `/lock`, `/unlock` — إدارة القنوات والرسائل.
