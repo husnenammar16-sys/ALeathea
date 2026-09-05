@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import logging
+import json
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 import discord
 from discord import app_commands
@@ -15,6 +18,25 @@ logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
 )
 logger = logging.getLogger("alythia")
+
+
+def verify_token_application(token: str) -> None:
+    request = Request(
+        "https://discord.com/api/v10/users/@me",
+        headers={"Authorization": f"Bot {token}"},
+    )
+    try:
+        with urlopen(request, timeout=10) as response:
+            identity = json.loads(response.read().decode("utf-8"))
+        logger.info(
+            "التوكن مرتبط بالبوت: %s (ID: %s)",
+            identity.get("username", "غير معروف"),
+            identity.get("id", "غير معروف"),
+        )
+    except HTTPError as error:
+        logger.error("تعذر التحقق من التوكن. رمز Discord: %s", error.code)
+    except (URLError, TimeoutError) as error:
+        logger.error("تعذر الوصول إلى Discord للتحقق من التوكن: %s", error)
 
 
 class AlythiaBot(commands.Bot):
@@ -68,6 +90,7 @@ def main() -> None:
     error = missing_configuration()
     if error:
         raise RuntimeError(error)
+    verify_token_application(TOKEN)
     database = Database()
     bot = AlythiaBot(database)
     try:

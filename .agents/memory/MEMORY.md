@@ -1,0 +1,1 @@
+- [Discord privileged intents](discord-intents.md) — enable intents on the exact application that issued the bot token.
