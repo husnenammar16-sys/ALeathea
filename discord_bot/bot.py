@@ -66,6 +66,7 @@ class AlythiaBot(commands.Bot):
             help_command=None,
         )
         self.database = database
+        self._guild_commands_synced = False
 
     async def setup_hook(self) -> None:
         await general.setup(self, self.database)
@@ -83,12 +84,13 @@ class AlythiaBot(commands.Bot):
         await automod.setup(self, self.database)
         await custom.setup(self, self.database)
         await prefix.setup(self, self.database)
-        synced = await self.tree.sync()
-        logger.info("تم تسجيل %s أمر Slash.", len(synced))
+        logger.info("تم تحميل %s أمر Slash للمزامنة.", len(self.tree.get_commands()))
 
     async def on_ready(self) -> None:
         if self.user:
             logger.info("تم تشغيل Alythia باسم %s في %s سيرفر.", self.user, len(self.guilds))
+        if self._guild_commands_synced:
+            return
         for guild in self.guilds:
             try:
                 self.tree.copy_global_to(guild=guild)
@@ -100,6 +102,10 @@ class AlythiaBot(commands.Bot):
                 )
             except discord.HTTPException:
                 logger.exception("تعذر مزامنة أوامر السيرفر %s", guild.id)
+        # Keep only the guild-scoped copy so Discord does not show every command twice.
+        self.tree.clear_commands(guild=None)
+        await self.tree.sync()
+        self._guild_commands_synced = True
 
     async def on_message(self, message: discord.Message) -> None:
         if message.author.bot:
