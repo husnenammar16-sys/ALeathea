@@ -89,6 +89,28 @@ class AlythiaBot(commands.Bot):
     async def on_ready(self) -> None:
         if self.user:
             logger.info("تم تشغيل Alythia باسم %s في %s سيرفر.", self.user, len(self.guilds))
+        for guild in self.guilds:
+            try:
+                self.tree.copy_global_to(guild=guild)
+                synced = await self.tree.sync(guild=guild)
+                logger.info(
+                    "تمت مزامنة %s أمرًا مع سيرفر %s.",
+                    len(synced),
+                    guild.name,
+                )
+            except discord.HTTPException:
+                logger.exception("تعذر مزامنة أوامر السيرفر %s", guild.id)
+
+    async def on_message(self, message: discord.Message) -> None:
+        if message.author.bot:
+            return
+        if message.content.startswith("!"):
+            logger.info(
+                "تم استقبال أمر بريفكس من %s في %s.",
+                message.author,
+                message.guild.name if message.guild else "رسائل خاصة",
+            )
+        await self.process_commands(message)
 
     async def on_app_command_error(
         self, interaction: discord.Interaction, error: app_commands.AppCommandError
