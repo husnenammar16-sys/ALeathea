@@ -79,7 +79,13 @@ class Voice(commands.Cog):
                 interaction.guild,
                 interaction.user.voice.channel,
             )
-        except (discord.ClientException, discord.Forbidden, discord.HTTPException, ValueError):
+        except (
+            discord.ClientException,
+            discord.Forbidden,
+            discord.HTTPException,
+            RuntimeError,
+            ValueError,
+        ):
             await interaction.response.send_message(
                 "تعذر دخول الروم الصوتي. تأكد أن لدي صلاحية **Connect** في الروم.",
                 ephemeral=True,
@@ -116,7 +122,13 @@ class Voice(commands.Cog):
             return
         try:
             voice_client = await self._join_channel(ctx.guild, ctx.author.voice.channel)
-        except (discord.ClientException, discord.Forbidden, discord.HTTPException, ValueError):
+        except (
+            discord.ClientException,
+            discord.Forbidden,
+            discord.HTTPException,
+            RuntimeError,
+            ValueError,
+        ):
             await ctx.send("تعذر دخول الروم. تأكد أن لدي صلاحية Connect.", delete_after=8)
             return
         await ctx.send(
