@@ -53,7 +53,7 @@
 - `/automod setup` `/automod disable` — الحماية من السبام والروابط.
 - `/custom add` `/custom remove` `/custom list` — أوامر مخصصة بصيغة `!اسم_الأمر`.
 - `/call @member message` — إرسال نداء خاص لعضو، للإدارة فقط.
-- `/voice join` — دخول البوت إلى رومك الصوتي والبقاء فيه 24 ساعة.
+- `/voice join` — دخول البوت إلى رومك الصوتي والبقاء فيه حتى إخراجه يدويًا.
 - `/voice leave` — إخراج البوت من الروم الصوتي.
 - `/ban`, `/kick`, `/timeout`, `/untimeout` — إدارة الأعضاء.
 - `/warn`, `/warnings`, `/clearwarnings` — نظام التحذيرات مع SQLite.

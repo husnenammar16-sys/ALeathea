@@ -30,7 +30,7 @@ class PrefixCommands(commands.Cog):
                 "`!warn` `!warnings` `!clearwarnings`\n"
                 "`!clear` `!timeout` `!untimeout` `!ban` `!kick`\n\n"
                 "`!call` أو `!نداء` لإرسال رسالة خاصة لعضو.\n\n"
-                "`!join` أو `!دخول` للبقاء في الروم الصوتي 24 ساعة، و`!leave` للخروج.\n\n"
+                "`!join` أو `!دخول` للبقاء في الروم الصوتي بشكل دائم، و`!leave` للخروج.\n\n"
                 "إعداد التذاكر والسحوبات والرتب التفاعلية متاح من أوامر Slash."
             )
         )
