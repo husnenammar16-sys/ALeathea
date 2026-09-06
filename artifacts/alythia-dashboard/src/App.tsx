@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   Activity,
@@ -38,8 +38,10 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
+import { useGetAlythiaStatus, type AlythiaStatus } from '@workspace/api-client-react';
 
 const queryClient = new QueryClient();
+const DASHBOARD_READ_ONLY = true;
 
 type ToggleField =
   | 'welcomeEnabled'
@@ -57,45 +59,92 @@ type ActivityItem = {
 };
 
 type DashboardState = {
+  dataAvailable: boolean;
+  lastUpdated: string | null;
   botOnline: boolean;
-  serverName: string;
-  memberCount: number;
-  commandCount: number;
-  voiceStatus: string;
-  activeModules: number;
+  serverName: string | null;
+  serverId: string | null;
+  memberCount: number | null;
+  commandCount: number | null;
+  voiceStatus: string | null;
+  activeModules: number | null;
   recentActivity: ActivityItem[];
-  moderationCounts: { blocked: number; warned: number; muted: number; banned: number };
+  moderationCounts: { blocked: number | null; warned: number | null; muted: number | null; banned: number | null };
   welcomeEnabled: boolean;
   logsEnabled: boolean;
   automodEnabled: boolean;
-  ticketCount: number;
-  suggestionCount: number;
+  ticketCount: number | null;
+  suggestionCount: number | null;
   economyEnabled: boolean;
   levelEnabled: boolean;
+  economyUserCount: number | null;
+  levelUserCount: number | null;
 };
 
 const initialState: DashboardState = {
-  botOnline: true,
-  serverName: 'Alythia',
-  memberCount: 12846,
-  commandCount: 3842,
-  voiceStatus: 'مستقر',
-  activeModules: 9,
-  moderationCounts: { blocked: 34, warned: 18, muted: 7, banned: 3 },
-  welcomeEnabled: true,
-  logsEnabled: true,
-  automodEnabled: true,
-  ticketCount: 12,
-  suggestionCount: 27,
-  economyEnabled: true,
-  levelEnabled: true,
-  recentActivity: [
-    { id: 'act-1', title: 'تم حظر عضو تلقائياً', detail: 'فلتر الروابط — #ساحة-المشرفين', time: 'منذ 4 د', tone: 'coral' },
-    { id: 'act-2', title: 'اقتراح جديد بانتظار المراجعة', detail: 'إضافة قناة للفعاليات الأسبوعية', time: 'منذ 19 د', tone: 'amber' },
-    { id: 'act-3', title: 'انضمام إلى القناة الصوتية', detail: 'قاعة-الاستراحة — 14 عضواً الآن', time: 'منذ 32 د', tone: 'blue' },
-    { id: 'act-4', title: 'تم حل تذكرة دعم', detail: 'طلب رتبة — بواسطة رنا', time: 'منذ 47 د', tone: 'mint' },
-  ],
+  dataAvailable: false,
+  lastUpdated: null,
+  botOnline: false,
+  serverName: null,
+  serverId: null,
+  memberCount: null,
+  commandCount: null,
+  voiceStatus: null,
+  activeModules: null,
+  moderationCounts: { blocked: null, warned: null, muted: null, banned: null },
+  welcomeEnabled: false,
+  logsEnabled: false,
+  automodEnabled: false,
+  ticketCount: null,
+  suggestionCount: null,
+  economyEnabled: false,
+  levelEnabled: false,
+  economyUserCount: null,
+  levelUserCount: null,
+  recentActivity: [],
 };
+
+function displayValue(value: number | string | null | undefined, suffix = '') {
+  if (value === null || value === undefined || value === '') return '—';
+  return `${typeof value === 'number' ? value.toLocaleString('ar-SA') : value}${suffix}`;
+}
+
+function formatUpdatedAt(value: string | null) {
+  if (!value) return 'لم تصل بيانات من البوت بعد';
+  return `آخر تحديث: ${new Intl.DateTimeFormat('ar-IQ', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))}`;
+}
+
+function createDashboardState(status?: AlythiaStatus): DashboardState {
+  const guild = status?.guilds[0];
+  if (!status || !guild) return initialState;
+  const enabledSettings = Object.values(guild.settings).filter(Boolean).length;
+  return {
+    ...initialState,
+    dataAvailable: true,
+    lastUpdated: status.updatedAt,
+    botOnline: status.botOnline,
+    serverName: guild.name,
+    serverId: guild.id,
+    memberCount: guild.memberCount,
+    commandCount: status.commandCount,
+    voiceStatus: guild.voiceConnected ? `متصل في ${guild.voiceChannel ?? 'روم صوتي'}` : 'غير متصل',
+    activeModules: enabledSettings,
+    welcomeEnabled: guild.settings.welcomeEnabled,
+    logsEnabled: guild.settings.logsEnabled,
+    automodEnabled: guild.settings.automodEnabled,
+    suggestionCount: guild.stats.pendingSuggestionCount,
+    economyUserCount: guild.stats.economyUserCount,
+    levelUserCount: guild.stats.levelUserCount,
+    economyEnabled: guild.stats.economyUserCount > 0,
+    levelEnabled: guild.stats.levelUserCount > 0,
+    moderationCounts: {
+      blocked: null,
+      warned: guild.stats.warningCount,
+      muted: null,
+      banned: null,
+    },
+  };
+}
 
 const navItems = [
   { href: '/', label: 'نظرة عامة', hint: 'المركز', icon: LayoutDashboard },
@@ -120,6 +169,7 @@ function Toggle({
   return (
     <button
       type="button"
+      disabled={DASHBOARD_READ_ONLY}
       role="switch"
       aria-checked={checked}
       aria-label={label}
@@ -128,6 +178,7 @@ function Toggle({
       className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-200 ${
         checked ? 'border-[#61bda7] bg-[#61bda7]' : 'border-[#b4c1c3] bg-[#dbe2e3]'
       }`}
+      title={DASHBOARD_READ_ONLY ? 'التحكم غير متاح حتى يتم ربط API التعديلات' : undefined}
     >
       <span
         className={`absolute top-[3px] h-4 w-4 rounded-full bg-[#f8fbfa] shadow-sm transition-transform duration-200 ${
@@ -237,7 +288,7 @@ function SectionCard({
   );
 }
 
-function Sidebar({ mobileOpen, close }: { mobileOpen: boolean; close: () => void }) {
+function Sidebar({ mobileOpen, close, state }: { mobileOpen: boolean; close: () => void; state: DashboardState }) {
   const [location] = useLocation();
   return (
     <>
@@ -259,12 +310,12 @@ function Sidebar({ mobileOpen, close }: { mobileOpen: boolean; close: () => void
         </div>
         <div className="mx-4 mt-5 rounded-xl border border-[#2c4b4e] bg-[#1c3940] px-3.5 py-3">
           <div className="flex items-center gap-2 text-[10px] font-semibold text-[#8eaeaa]">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#81d0b5]" />
-            الخادم متصل
+            <span className={`h-1.5 w-1.5 rounded-full ${state.botOnline ? 'bg-[#81d0b5]' : 'bg-[#d77867]'}`} />
+            {state.botOnline ? 'البوت متصل' : 'البوت غير متصل'}
           </div>
           <div className="mt-2 flex items-center justify-between">
-            <span className="text-sm font-semibold text-[#e9f3ef]" data-testid="text-sidebar-server">Alythia</span>
-            <span className="font-mono-data text-[10px] text-[#86aaa4]" data-testid="text-sidebar-server-id"># 7482</span>
+            <span className="text-sm font-semibold text-[#e9f3ef]" data-testid="text-sidebar-server">{state.serverName ?? 'غير متاح'}</span>
+            <span className="font-mono-data text-[10px] text-[#86aaa4]" data-testid="text-sidebar-server-id">{state.serverId ?? '—'}</span>
           </div>
         </div>
         <nav className="mt-7 flex-1 px-3" aria-label="التنقل الرئيسي">
@@ -305,7 +356,7 @@ function Sidebar({ mobileOpen, close }: { mobileOpen: boolean; close: () => void
   );
 }
 
-function Shell({ children }: { children: ReactNode }) {
+function Shell({ children, state }: { children: ReactNode; state: DashboardState }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -313,7 +364,7 @@ function Shell({ children }: { children: ReactNode }) {
   const current = navItems.find((item) => item.href === location) ?? navItems[0];
   return (
     <div className="dashboard-shell">
-      <Sidebar mobileOpen={mobileOpen} close={() => setMobileOpen(false)} />
+      <Sidebar mobileOpen={mobileOpen} close={() => setMobileOpen(false)} state={state} />
       <div className="min-h-[100dvh] lg:pr-[274px]">
         <header className="sticky top-0 z-20 flex h-[72px] items-center justify-between border-b border-[#dce6e5]/90 bg-[#edf2f3]/90 px-4 backdrop-blur-md sm:px-7 lg:px-10">
           <div className="flex items-center gap-3">
@@ -336,8 +387,8 @@ function Shell({ children }: { children: ReactNode }) {
             {notificationsOpen && <div data-testid="panel-notifications" className="absolute left-4 top-[59px] w-[255px] rounded-2xl border border-[#d6e2e2] bg-[#f9fbfa] p-4 text-right shadow-[0_14px_35px_rgba(40,62,69,0.12)] sm:left-7 lg:left-10"><p className="text-xs font-bold text-[#34545b]">التنبيهات</p><p className="mt-2 text-[11px] text-[#809499]">لا توجد تنبيهات حرجة. كل شيء تحت السيطرة.</p></div>}
             <div className="hidden items-center gap-2 border-r border-[#d7e1e1] pr-3 sm:flex">
               <span className="text-left">
-                <span className="block text-[11px] font-bold text-[#36545a]" data-testid="text-header-server">Alythia</span>
-                <span className="block text-[10px] text-[#8a9da1]">متصل الآن</span>
+                <span className="block text-[11px] font-bold text-[#36545a]" data-testid="text-header-server">{state.serverName ?? 'غير متاح'}</span>
+                <span className="block text-[10px] text-[#8a9da1]">{state.botOnline ? 'متصل الآن' : 'غير متصل'}</span>
               </span>
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#d7ebe5] text-[#397e6e]"><Server size={16} /></span>
             </div>
@@ -349,25 +400,26 @@ function Shell({ children }: { children: ReactNode }) {
   );
 }
 
-function OverviewPage({ state, toggle }: { state: DashboardState; toggle: (field: ToggleField) => void }) {
+function OverviewPage({ state, toggle, refresh }: { state: DashboardState; toggle: (field: ToggleField) => void; refresh: () => void }) {
   const [refreshed, setRefreshed] = useState(false);
-  const totalModeration = Object.values(state.moderationCounts).reduce((sum, count) => sum + count, 0);
+  const knownModeration = Object.values(state.moderationCounts).filter((count): count is number => count !== null);
+  const totalModeration = knownModeration.reduce((sum, count) => sum + count, 0);
   const systems: Array<{ label: string; enabled: boolean; icon: typeof Bot }> = [
     { label: 'البوت الأساسي', enabled: state.botOnline, icon: Bot },
     { label: 'الحماية التلقائية', enabled: state.automodEnabled, icon: ShieldCheck },
     { label: 'سجلات الأحداث', enabled: state.logsEnabled, icon: ListChecks },
-    { label: 'حضور القنوات', enabled: true, icon: Radio },
+    { label: 'الترحيب', enabled: state.welcomeEnabled, icon: Radio },
   ];
   return (
     <>
       <PageHeader
-        eyebrow="الثلاثاء، 24 سبتمبر 2024"
-        title="صباح هادئ في Alythia"
-        description="ملخص حيّ لصحة البوت ونبض المجتمع. كل ما يستحق قراراً، في مكان واحد."
+        eyebrow="بيانات البوت المباشرة"
+        title={`نظرة عامة — ${state.serverName ?? 'بانتظار الاتصال'}`}
+        description={formatUpdatedAt(state.lastUpdated)}
         action={
           <div className="flex items-center gap-2">
             <StatusPill online={state.botOnline} label={state.botOnline ? 'البوت متصل' : 'البوت متوقف'} />
-            <button type="button" onClick={() => setRefreshed(true)} data-testid="button-refresh-overview" className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#cfdddd] bg-[#f8fbfa] px-4 text-xs font-bold text-[#41636a] shadow-sm transition hover:-translate-y-0.5 hover:bg-[#e7f2ef]">
+            <button type="button" onClick={() => { setRefreshed(true); refresh(); }} data-testid="button-refresh-overview" className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#cfdddd] bg-[#f8fbfa] px-4 text-xs font-bold text-[#41636a] shadow-sm transition hover:-translate-y-0.5 hover:bg-[#e7f2ef]">
               <RefreshCw size={15} className={refreshed ? 'animate-spin' : ''} />
               {refreshed ? 'تم التحديث' : 'تحديث البيانات'}
             </button>
@@ -375,14 +427,17 @@ function OverviewPage({ state, toggle }: { state: DashboardState; toggle: (field
         }
       />
       <div className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <MetricCard label="أعضاء الخادم" value={state.memberCount.toLocaleString('ar-SA')} detail="+184 خلال هذا الشهر" icon={UsersRound} accent="mint" testId="member-count" />
-        <MetricCard label="أوامر هذا الأسبوع" value={state.commandCount.toLocaleString('ar-SA')} detail="+12.8% مقارنة بالأسبوع الماضي" icon={Zap} accent="amber" testId="command-count" />
-        <MetricCard label="حالة الصوت" value={state.voiceStatus} detail="زمن الاستجابة 42ms" icon={Headphones} accent="blue" testId="voice-status" />
-        <MetricCard label="الأنظمة النشطة" value={`${state.activeModules} / 10`} detail="كل الوحدات الأساسية تعمل" icon={Activity} accent="coral" testId="active-modules" />
+        <MetricCard label="أعضاء الخادم" value={displayValue(state.memberCount)} detail="القيمة الحالية من Discord" icon={UsersRound} accent="mint" testId="member-count" />
+        <MetricCard label="أوامر Slash" value={displayValue(state.commandCount)} detail="عدد الأوامر المحملة في البوت" icon={Zap} accent="amber" testId="command-count" />
+        <MetricCard label="حالة الصوت" value={state.voiceStatus ?? '—'} detail="الحالة الحالية لاتصال البوت" icon={Headphones} accent="blue" testId="voice-status" />
+        <MetricCard label="إعدادات مفعلة" value={displayValue(state.activeModules)} detail="من إعدادات السيرفر المعروفة" icon={Activity} accent="coral" testId="active-modules" />
       </div>
       <div className="grid gap-5 xl:grid-cols-[1.35fr_0.65fr]">
         <SectionCard title="نبض الخادم" description="آخر الأحداث التي تحتاج انتباهك" testId="recent-activity">
           <div className="divide-y divide-[#e7edec]">
+            {state.recentActivity.length === 0 && (
+              <div className="px-5 py-8 text-center text-xs text-[#809398]">لا توجد بيانات أحداث موثقة من البوت حتى الآن.</div>
+            )}
             {state.recentActivity.map((item) => (
               <div key={item.id} data-testid={`row-activity-${item.id}`} className="flex items-center gap-3 px-5 py-4 transition hover:bg-[#f1f6f4]">
                 <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${item.tone === 'mint' ? 'bg-[#def0e9] text-[#39846f]' : item.tone === 'amber' ? 'bg-[#f9ecd5] text-[#ad742c]' : item.tone === 'coral' ? 'bg-[#f7e2dd] text-[#b45e52]' : 'bg-[#deebf2] text-[#4a7991]'}`}>
@@ -400,17 +455,17 @@ function OverviewPage({ state, toggle }: { state: DashboardState; toggle: (field
             <Link href="/moderation" data-testid="link-view-all-activity" className="inline-flex items-center gap-1 text-[11px] font-bold text-[#398674] hover:text-[#226956]">عرض سجل الإشراف <ChevronLeft size={14} /></Link>
           </div>
         </SectionCard>
-        <SectionCard title="حالة الأنظمة" description={`${state.activeModules} أنظمة تعمل دون انقطاع`} testId="system-health">
+        <SectionCard title="حالة الأنظمة" description="الحالة المستلمة من إعدادات البوت" testId="system-health">
           <div className="subtle-grid relative m-5 overflow-hidden rounded-xl border border-[#dfe9e6] bg-[#edf7f3] p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-bold text-[#4f7476]">زمن التشغيل</p>
-                <p className="mt-1 font-mono-data text-2xl font-bold text-[#276858]" data-testid="value-uptime">99.97%</p>
+                <p className="text-[11px] font-bold text-[#4f7476]">حالة الاتصال</p>
+                <p className="mt-1 font-mono-data text-2xl font-bold text-[#276858]" data-testid="value-uptime">{state.botOnline ? 'متصل' : 'غير متصل'}</p>
               </div>
               <span className="flex h-11 w-11 items-center justify-center rounded-full border-[5px] border-[#78c4ae] border-l-[#d0e7e0] text-[#337c6b]"><Check size={18} /></span>
             </div>
-            <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-[#d2e6df]"><div className="h-full w-[88%] rounded-full bg-[#67bba6]" /></div>
-            <div className="mt-2 flex justify-between text-[10px] text-[#789794]"><span>آخر فحص: قبل 2 دقيقة</span><span className="font-mono-data">UP 18d 04h</span></div>
+            <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-[#d2e6df]"><div className={`h-full w-full rounded-full ${state.botOnline ? 'bg-[#67bba6]' : 'bg-[#d77867]'}`} /></div>
+            <div className="mt-2 flex justify-between text-[10px] text-[#789794]"><span>{formatUpdatedAt(state.lastUpdated)}</span><span className="font-mono-data">{state.serverId ?? '—'}</span></div>
           </div>
           <div className="space-y-1 px-5 pb-4">
             {systems.map(({ label, enabled, icon: Icon }, index) => (
@@ -424,16 +479,17 @@ function OverviewPage({ state, toggle }: { state: DashboardState; toggle: (field
         </SectionCard>
       </div>
       <div className="mt-5 grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-        <SectionCard title="خريطة الإشراف" description="آخر 24 ساعة" testId="moderation-summary">
+        <SectionCard title="ملخص الإشراف" description="الأرقام المعروفة من قاعدة البيانات" testId="moderation-summary">
           <div className="flex items-center gap-6 px-5 py-5">
-            <div className="relative flex h-28 w-28 shrink-0 items-center justify-center rounded-full" style={{ background: `conic-gradient(#d27668 0deg 22deg, #e7b65b 22deg 82deg, #65bba5 82deg 159deg, #dce8e5 159deg 360deg)` }}>
-              <div className="flex h-[84px] w-[84px] flex-col items-center justify-center rounded-full bg-[#f9fbfa]"><span className="font-mono-data text-xl font-bold text-[#2c4b52]" data-testid="value-moderation-total">{totalModeration}</span><span className="text-[10px] text-[#8b9d9f]">إجراء</span></div>
+            <div className="flex h-28 w-28 shrink-0 flex-col items-center justify-center rounded-full border border-dashed border-[#b9d6cd] bg-[#eef7f3]">
+              <span className="font-mono-data text-xl font-bold text-[#2c4b52]" data-testid="value-moderation-total">{totalModeration}</span>
+              <span className="text-[10px] text-[#8b9d9f]">تحذير معروف</span>
             </div>
             <div className="grid flex-1 grid-cols-2 gap-y-3">
               {Object.entries(state.moderationCounts).map(([key, value], index) => {
                 const labels = ['محظور', 'تحذير', 'كتم', 'حظر نهائي'];
                 const colors = ['#d27668', '#e7b65b', '#65bba5', '#769eaf'];
-                return <div key={key} className="flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: colors[index] }} /><span className="text-[11px] text-[#70868b]">{labels[index]}</span><span className="font-mono-data mr-auto text-xs font-bold text-[#416169]" data-testid={`value-moderation-${key}`}>{value}</span></div>;
+                return <div key={key} className="flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: colors[index] }} /><span className="text-[11px] text-[#70868b]">{labels[index]}</span><span className="font-mono-data mr-auto text-xs font-bold text-[#416169]" data-testid={`value-moderation-${key}`}>{displayValue(value)}</span></div>;
               })}
             </div>
           </div>
@@ -478,20 +534,20 @@ function ModerationPage({ state, toggle }: { state: DashboardState; toggle: (fie
     <>
       <PageHeader eyebrow="الحماية والانضباط" title="الإشراف" description="قواعد واضحة، قرارات أسرع، وسجل يشرح ما حدث دون ضجيج." action={<button type="button" onClick={() => setRuleAdded(true)} data-testid="button-add-moderation-rule" className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#367e6d] px-4 text-xs font-bold text-[#f5fbf8] shadow-sm hover:bg-[#2d6f60]"><Plus size={15} /> {ruleAdded ? 'تمت إضافة قاعدة' : 'قاعدة جديدة'}</button>} />
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <MetricCard label="تم حظره" value={String(state.moderationCounts.blocked)} detail="خلال آخر 24 ساعة" icon={ShieldCheck} accent="coral" testId="blocked-count" />
-        <MetricCard label="تحذيرات" value={String(state.moderationCounts.warned)} detail="بانتظار المتابعة" icon={CircleAlert} accent="amber" testId="warned-count" />
-        <MetricCard label="حالات كتم" value={String(state.moderationCounts.muted)} detail="تلقائية ويدوية" icon={LockKeyhole} accent="blue" testId="muted-count" />
-        <MetricCard label="حظر نهائي" value={String(state.moderationCounts.banned)} detail="قرارات المشرفين" icon={CircleCheck} accent="mint" testId="banned-count" />
+        <MetricCard label="تم حظره" value={displayValue(state.moderationCounts.blocked)} detail="غير متاح من المصدر الحالي" icon={ShieldCheck} accent="coral" testId="blocked-count" />
+        <MetricCard label="تحذيرات" value={displayValue(state.moderationCounts.warned)} detail="من سجل التحذيرات في قاعدة البيانات" icon={CircleAlert} accent="amber" testId="warned-count" />
+        <MetricCard label="حالات كتم" value={displayValue(state.moderationCounts.muted)} detail="غير متاح من المصدر الحالي" icon={LockKeyhole} accent="blue" testId="muted-count" />
+        <MetricCard label="حظر نهائي" value={displayValue(state.moderationCounts.banned)} detail="غير متاح من المصدر الحالي" icon={CircleCheck} accent="mint" testId="banned-count" />
       </div>
       <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-        <SectionCard title="قواعد الحماية" description="التبديلات تطبق فوراً على جميع القنوات" testId="moderation-rules">
+        <SectionCard title="قواعد الحماية" description="الحالة الحالية فقط؛ التعديل الفعلي يحتاج API إضافي" testId="moderation-rules">
           <div className="divide-y divide-[#e7edec]">
             <ControlRow title="الحماية التلقائية" description="التقاط السلوك المزعج قبل أن ينتشر" checked={state.automodEnabled} onToggle={() => toggle('automodEnabled')} icon={ShieldCheck} testId="automod" />
             <ControlRow title="فلترة الروابط" description="منع الروابط غير الموثوقة للأعضاء الجدد" checked={filterLinks} onToggle={() => setFilterLinks(!filterLinks)} icon={LockKeyhole} testId="link-filter" />
             <ControlRow title="حماية السبام" description="رصد التكرار والرسائل المتتالية" checked={filterSpam} onToggle={() => setFilterSpam(!filterSpam)} icon={Zap} testId="spam-filter" />
             <ControlRow title="الوضع البطيء الذكي" description="اقتراح تباطؤ القناة عند ارتفاع النشاط" checked={slowMode} onToggle={() => setSlowMode(!slowMode)} icon={Activity} testId="slow-mode" />
           </div>
-          <div className="border-t border-[#e7edec] bg-[#f4f8f7] px-5 py-3 text-[11px] text-[#6e878b]">آخر تعديل على القواعد: <span className="font-semibold text-[#47746d]" data-testid="text-moderation-last-edit">اليوم، 09:42</span></div>
+          <div className="border-t border-[#e7edec] bg-[#f4f8f7] px-5 py-3 text-[11px] text-[#6e878b]">مصدر الحالة: <span className="font-semibold text-[#47746d]" data-testid="text-moderation-last-edit">{formatUpdatedAt(state.lastUpdated)}</span></div>
         </SectionCard>
         <SectionCard title="إعدادات السجل" description="ما الذي يظهر في قناة المراجعة؟" testId="moderation-logs">
           <div className="space-y-1 px-5 py-4">
@@ -519,10 +575,10 @@ function CommunityPage({ state, toggle }: { state: DashboardState; toggle: (fiel
       <PageHeader eyebrow="مساحة التفاعل" title="المجتمع" description="اجعل دخول الأعضاء أسهل، وامنح الأفكار مساراً واضحاً من الرسالة إلى القرار." action={<button type="button" onClick={() => setPreview(!preview)} data-testid="button-preview-welcome" className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#cfdddd] bg-[#f8fbfa] px-4 text-xs font-bold text-[#41636a] hover:bg-[#e6f1ee]"><MessageSquare size={15} /> {preview ? 'إخفاء المعاينة' : 'معاينة الترحيب'}</button>} />
       {preview && <div data-testid="panel-welcome-preview" className="mb-5 rounded-2xl border border-[#cfe4dc] bg-[#e9f7f2] px-5 py-4"><p className="text-xs font-bold text-[#347765]">معاينة رسالة #البهو</p><p className="mt-2 text-sm text-[#466c6e]">أهلاً بك في Alythia، يسعدنا وجودك هنا. اختر دورك وابدأ من المكان الذي يناسبك.</p></div>}
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <MetricCard label="تذاكر مفتوحة" value={String(state.ticketCount)} detail="3 تحتاج ردّاً" icon={Ticket} accent="blue" testId="ticket-count" />
-        <MetricCard label="اقتراحات جديدة" value={String(state.suggestionCount)} detail="8 بانتظار التصويت" icon={MessageSquare} accent="amber" testId="suggestion-count" />
-        <MetricCard label="الترحيب" value={state.welcomeEnabled ? 'نشط' : 'متوقف'} detail="يظهر في #البهو" icon={UsersRound} accent="mint" testId="welcome-status" />
-        <MetricCard label="تفاعل الأعضاء" value="74.6%" detail="+4.2% هذا الأسبوع" icon={Activity} accent="coral" testId="engagement-rate" />
+        <MetricCard label="تذاكر مفتوحة" value={displayValue(state.ticketCount)} detail="غير متاح من المصدر الحالي" icon={Ticket} accent="blue" testId="ticket-count" />
+        <MetricCard label="اقتراحات معلقة" value={displayValue(state.suggestionCount)} detail="حالة pending من قاعدة البيانات" icon={MessageSquare} accent="amber" testId="suggestion-count" />
+        <MetricCard label="الترحيب" value={state.dataAvailable ? (state.welcomeEnabled ? 'مهيأ' : 'غير مهيأ') : '—'} detail="حسب قناة الترحيب المحفوظة" icon={UsersRound} accent="mint" testId="welcome-status" />
+        <MetricCard label="تفاعل الأعضاء" value="—" detail="غير متاح من المصدر الحالي" icon={Activity} accent="coral" testId="engagement-rate" />
       </div>
       <div className="grid gap-5 xl:grid-cols-2">
         <SectionCard title="الترحيب والأدوار" description="الانطباع الأول يبدأ قبل أول رسالة" testId="welcome-settings">
@@ -540,7 +596,7 @@ function CommunityPage({ state, toggle }: { state: DashboardState; toggle: (fiel
             <ControlRow title="نظام التذاكر" description="افتح مساحة خاصة لكل طلب" checked={ticketSystem} onToggle={() => setTicketSystem(!ticketSystem)} icon={Ticket} testId="tickets" />
             <ControlRow title="الإغلاق التلقائي" description="إغلاق التذاكر الخاملة بعد 72 ساعة" checked={ticketAutoClose} onToggle={() => setTicketAutoClose(!ticketAutoClose)} icon={RotateCcw} testId="ticket-auto-close" />
             <ControlRow title="مراجعة الاقتراحات" description="نشر الاقتراحات بعد موافقة المشرف" checked={suggestionReview} onToggle={() => setSuggestionReview(!suggestionReview)} icon={MessageSquare} testId="suggestion-review" />
-            <div className="flex items-center justify-between px-5 py-4"><div><p className="text-xs font-bold text-[#3c5960]">قناة التذاكر</p><p className="mt-1 text-[11px] text-[#8b9da0]">12 تذكرة مفتوحة حالياً</p></div><button type="button" onClick={() => setTicketSystem(true)} data-testid="button-open-tickets" className="inline-flex items-center gap-1 rounded-lg bg-[#e6f2ee] px-3 py-2 text-[11px] font-bold text-[#39806d]">فتح التذاكر <ChevronLeft size={13} /></button></div>
+              <div className="flex items-center justify-between px-5 py-4"><div><p className="text-xs font-bold text-[#3c5960]">قناة التذاكر</p><p className="mt-1 text-[11px] text-[#8b9da0]">غير متاحة من API الحالي</p></div><button type="button" disabled data-testid="button-open-tickets" className="inline-flex cursor-not-allowed items-center gap-1 rounded-lg bg-[#e6f2ee] px-3 py-2 text-[11px] font-bold text-[#8ca59f]">غير متاح <ChevronLeft size={13} /></button></div>
           </div>
         </SectionCard>
       </div>
@@ -555,12 +611,12 @@ function EconomyPage({ state, toggle }: { state: DashboardState; toggle: (field:
   return (
     <>
       <PageHeader eyebrow="النمو والمكافآت" title="الاقتصاد والمستويات" description="حلقة تقدم صغيرة تجعل الأعضاء يعودون، من دون أن تتحول إلى ضوضاء." action={<button type="button" onClick={() => setLeaderboardShown(!leaderboardShown)} data-testid="button-economy-leaderboard" className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#367e6d] px-4 text-xs font-bold text-[#f5fbf8] hover:bg-[#2d6f60]"><Coins size={15} /> {leaderboardShown ? 'إخفاء المتصدرين' : 'لوحة المتصدرين'}</button>} />
-      {leaderboardShown && <div data-testid="panel-economy-leaderboard" className="mb-5 grid gap-2 rounded-2xl border border-[#d9e7e2] bg-[#edf7f3] p-4 sm:grid-cols-3"><div className="rounded-xl bg-[#f9fbfa] px-3 py-3"><span className="text-[10px] text-[#8a9da0]">الأول</span><p className="mt-1 text-xs font-bold text-[#3f6465]">رنا <span className="font-mono-data mr-2 text-[#559881]">18,420</span></p></div><div className="rounded-xl bg-[#f9fbfa] px-3 py-3"><span className="text-[10px] text-[#8a9da0]">الثاني</span><p className="mt-1 text-xs font-bold text-[#3f6465]">سليم <span className="font-mono-data mr-2 text-[#559881]">16,875</span></p></div><div className="rounded-xl bg-[#f9fbfa] px-3 py-3"><span className="text-[10px] text-[#8a9da0]">الثالث</span><p className="mt-1 text-xs font-bold text-[#3f6465]">نور <span className="font-mono-data mr-2 text-[#559881]">15,930</span></p></div></div>}
+      {leaderboardShown && <div data-testid="panel-economy-leaderboard" className="mb-5 rounded-2xl border border-[#d9e7e2] bg-[#edf7f3] p-5 text-center text-xs text-[#6f8986]">لا توجد بيانات متصدرين موثقة في Endpoint الحالة الحالي.</div>}
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <MetricCard label="رصيد متداول" value="2.84M" detail="Lyria بين الأعضاء" icon={Coins} accent="amber" testId="currency-supply" />
-        <MetricCard label="رسائل اليوم" value="18,492" detail="+8.4% عن المتوسط" icon={MessageSquare} accent="blue" testId="daily-messages" />
-        <MetricCard label="المستوى الأكثر شيوعاً" value="12" detail="من أصل 46 مستوى" icon={Zap} accent="mint" testId="popular-level" />
-        <MetricCard label="مكافآت اليوم" value="384" detail="عضواً استلم مكافأته" icon={CircleCheck} accent="coral" testId="daily-rewards" />
+        <MetricCard label="مستخدمو الاقتصاد" value={displayValue(state.economyUserCount)} detail="من جدول الاقتصاد في قاعدة البيانات" icon={Coins} accent="amber" testId="currency-supply" />
+        <MetricCard label="رسائل اليوم" value="—" detail="غير متاح من المصدر الحالي" icon={MessageSquare} accent="blue" testId="daily-messages" />
+        <MetricCard label="مستخدمو المستويات" value={displayValue(state.levelUserCount)} detail="من جدول المستويات في قاعدة البيانات" icon={Zap} accent="mint" testId="popular-level" />
+        <MetricCard label="المكافآت اليومية" value="—" detail="غير متاح من المصدر الحالي" icon={CircleCheck} accent="coral" testId="daily-rewards" />
       </div>
       <div className="grid gap-5 xl:grid-cols-[0.8fr_1.2fr]">
         <SectionCard title="المحركات" description="حدد ما يدفع المجتمع إلى الأمام" testId="economy-controls">
@@ -576,64 +632,42 @@ function EconomyPage({ state, toggle }: { state: DashboardState; toggle: (field:
         </SectionCard>
         <SectionCard title="توزيع المستويات" description="لقطة من مسار التقدم داخل Alythia" testId="level-distribution">
           <div className="space-y-4 px-5 py-5">
-            {[
-              ['المبتدئون', '1 — 5', 64, '#78b9aa'],
-              ['المشاركون', '6 — 15', 42, '#e2b35f'],
-              ['المخضرمون', '16 — 30', 21, '#729bb0'],
-              ['القدامى', '31+', 8, '#d37a6d'],
-            ].map(([label, range, percentage, color], index) => (
-              <div key={String(label)} data-testid={`row-level-distribution-${index}`}>
-                <div className="mb-2 flex items-center justify-between text-[11px]"><span className="font-bold text-[#4c686e]">{label} <span className="mr-1 font-normal text-[#9aa9ab]">({range})</span></span><span className="font-mono-data font-bold text-[#56767b]" data-testid={`value-level-distribution-${index}`}>{percentage}%</span></div>
-                <div className="h-2 overflow-hidden rounded-full bg-[#e7efed]"><div className="h-full rounded-full" style={{ width: `${percentage}%`, backgroundColor: color as string }} /></div>
-              </div>
-            ))}
+            <div className="rounded-xl border border-dashed border-[#cbded8] px-4 py-8 text-center text-xs text-[#78908c]">توزيع المستويات التفصيلي غير متاح من Endpoint الحالة الحالي.</div>
           </div>
-          <div className="mx-5 mb-5 rounded-xl border border-[#dfe9e6] bg-[#eef7f3] px-4 py-3 text-[11px] text-[#66837f]"><span className="font-bold text-[#337766]">ملاحظة:</span> المستوى 12 هو نقطة التحول الأكثر نشاطاً هذا الشهر.</div>
+          <div className="mx-5 mb-5 rounded-xl border border-[#dfe9e6] bg-[#eef7f3] px-4 py-3 text-[11px] text-[#66837f]"><span className="font-bold text-[#337766]">مصدر البيانات:</span> عدد المستخدمين المسجلين فقط متاح حاليًا.</div>
         </SectionCard>
       </div>
     </>
   );
 }
 
-function VoicePage() {
-  const [active, setActive] = useState(true);
-  const [autoJoin, setAutoJoin] = useState(false);
-  const [channel, setChannel] = useState('قاعة-الاستراحة');
+function VoicePage({ state }: { state: DashboardState }) {
+  const actualVoiceConnected = state.voiceStatus?.startsWith('متصل') ?? false;
+  const active = actualVoiceConnected;
+  const channel = state.voiceStatus ?? 'غير متاح';
   const [channelsShown, setChannelsShown] = useState(false);
-  const members = [
-    { id: 'member-1', name: 'رنا', role: 'مشرفة', initials: 'ر', color: '#d9ebe3', text: '#397b6d', bars: [42, 63, 52, 77, 65, 58, 84] },
-    { id: 'member-2', name: 'سليم', role: 'عضو', initials: 'س', color: '#e8e1d5', text: '#947449', bars: [68, 45, 72, 54, 61, 48, 75] },
-    { id: 'member-3', name: 'نور', role: 'عضو', initials: 'ن', color: '#dce6ef', text: '#557b94', bars: [34, 52, 44, 64, 41, 69, 55] },
-  ];
   return (
     <>
-      <PageHeader eyebrow="الحضور المباشر" title="الصوت" description="اعرف أين يجتمع الأعضاء، ومتى يحتاجون إلى مساحة إضافية." action={<button type="button" onClick={() => setActive(!active)} data-testid="button-toggle-voice" className={`inline-flex h-10 items-center gap-2 rounded-xl px-4 text-xs font-bold shadow-sm ${active ? 'bg-[#367e6d] text-[#f5fbf8] hover:bg-[#2d6f60]' : 'border border-[#d5e1e0] bg-[#f8fbfa] text-[#567078]'}`}><Radio size={15} /> {active ? 'الصوت متصل' : 'تشغيل الصوت'}</button>} />
+      <PageHeader eyebrow="الحضور المباشر" title="الصوت" description="الحالة الفعلية لاتصال البوت بالروم الصوتي." action={<button type="button" disabled data-testid="button-toggle-voice" className={`inline-flex cursor-not-allowed items-center gap-2 rounded-xl px-4 text-xs font-bold shadow-sm ${active ? 'bg-[#367e6d] text-[#f5fbf8]' : 'border border-[#d5e1e0] bg-[#f8fbfa] text-[#567078]'}`}><Radio size={15} /> {active ? 'البوت متصل' : 'البوت غير متصل'}</button>} />
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <MetricCard label="في القنوات الآن" value={active ? '27' : '0'} detail="عبر 4 قنوات صوتية" icon={Headphones} accent="mint" testId="voice-members" />
-        <MetricCard label="زمن الاستجابة" value="42ms" detail="مستقر خلال الساعة" icon={Wifi} accent="blue" testId="voice-latency" />
-        <MetricCard label="أعلى حضور" value="14" detail="قاعة-الاستراحة" icon={UsersRound} accent="amber" testId="voice-peak" />
-        <MetricCard label="جلسات اليوم" value="86" detail="+11 جلسة عن أمس" icon={Activity} accent="coral" testId="voice-sessions" />
+        <MetricCard label="حالة اتصال البوت" value={active ? 'متصل' : 'غير متصل'} detail="من الحالة المباشرة" icon={Headphones} accent="mint" testId="voice-members" />
+        <MetricCard label="زمن الاستجابة" value="—" detail="غير متاح من المصدر الحالي" icon={Wifi} accent="blue" testId="voice-latency" />
+        <MetricCard label="أعلى حضور" value="—" detail="غير متاح من المصدر الحالي" icon={UsersRound} accent="amber" testId="voice-peak" />
+        <MetricCard label="جلسات اليوم" value="—" detail="غير متاح من المصدر الحالي" icon={Activity} accent="coral" testId="voice-sessions" />
       </div>
-      {channelsShown && <div data-testid="panel-voice-channels" className="mb-5 grid gap-2 rounded-2xl border border-[#d9e7e2] bg-[#edf7f3] p-4 sm:grid-cols-3"><div className="rounded-xl bg-[#f9fbfa] px-3 py-3 text-xs font-bold text-[#45666b]">قاعة-الاستراحة <span className="mr-2 font-mono-data text-[#4b937f]">14</span></div><div className="rounded-xl bg-[#f9fbfa] px-3 py-3 text-xs font-bold text-[#45666b]">المجلس <span className="mr-2 font-mono-data text-[#4b937f]">8</span></div><div className="rounded-xl bg-[#f9fbfa] px-3 py-3 text-xs font-bold text-[#45666b]">استوديو-البث <span className="mr-2 font-mono-data text-[#4b937f]">5</span></div></div>}
+      {channelsShown && <div data-testid="panel-voice-channels" className="mb-5 rounded-2xl border border-[#d9e7e2] bg-[#edf7f3] p-5 text-center text-xs text-[#6f8986]">تفاصيل القنوات الصوتية غير متاحة من Endpoint الحالة الحالي.</div>}
       <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
         <SectionCard title="الحضور الآن" description="تحديث حيّ كل 30 ثانية" testId="live-voice-presence">
           <div className="divide-y divide-[#e7edec]">
-            {members.map((member) => (
-              <div key={member.id} data-testid={`row-voice-member-${member.id}`} className="flex items-center gap-3 px-5 py-4">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold" style={{ backgroundColor: member.color, color: member.text }}>{member.initials}</span>
-                <div className="min-w-0 flex-1"><p className="text-xs font-bold text-[#3c5960]" data-testid={`text-voice-member-${member.id}`}>{member.name}</p><p className="mt-0.5 text-[10px] text-[#8b9da0]">{member.role} · {channel}</p></div>
-                <div className="hidden h-6 items-end gap-1 sm:flex">{member.bars.map((height, index) => <span key={index} className="w-1 rounded-full bg-[#75bfa9]" style={{ height: `${height}%` }} />)}</div>
-                <span className="flex items-center gap-1.5 text-[10px] font-bold text-[#49977f]"><span className="h-1.5 w-1.5 rounded-full bg-[#67baa2]" />متحدث الآن</span>
-              </div>
-            ))}
+            <div className="px-5 py-8 text-center text-xs text-[#809398]">لا توجد بيانات حضور أعضاء موثقة من Endpoint الحالة الحالي.</div>
           </div>
-          <div className="flex items-center justify-between border-t border-[#e7edec] px-5 py-3"><span className="text-[11px] text-[#829699]" data-testid="text-voice-total">+24 عضواً في القنوات الأخرى</span><button type="button" onClick={() => setChannelsShown(!channelsShown)} data-testid="button-view-voice-channels" className="text-[11px] font-bold text-[#3a8471]">{channelsShown ? 'إخفاء القنوات' : 'عرض القنوات'} <ChevronLeft size={13} className="mr-1 inline" /></button></div>
+          <div className="flex items-center justify-between border-t border-[#e7edec] px-5 py-3"><span className="text-[11px] text-[#829699]" data-testid="text-voice-total">القناة الحالية: {channel}</span><button type="button" onClick={() => setChannelsShown(!channelsShown)} data-testid="button-view-voice-channels" className="text-[11px] font-bold text-[#3a8471]">{channelsShown ? 'إخفاء القنوات' : 'عرض القنوات'} <ChevronLeft size={13} className="mr-1 inline" /></button></div>
         </SectionCard>
         <SectionCard title="التحكم الصوتي" description="اتصال البوت بالقنوات" testId="voice-controls">
           <div className="space-y-4 px-5 py-5">
             <div className={`rounded-xl border p-4 ${active ? 'border-[#cfe4dc] bg-[#eef8f4]' : 'border-[#e7dddd] bg-[#faf1ef]'}`}><div className="flex items-center gap-3"><span className={`rounded-lg p-2 ${active ? 'bg-[#d5ede4] text-[#38836e]' : 'bg-[#f1dcda] text-[#ac5f55]'}`}>{active ? <Wifi size={17} /> : <WifiOff size={17} />}</span><div><p className="text-xs font-bold text-[#3c5960]">{active ? 'الاتصال مستقر' : 'الاتصال متوقف'}</p><p className="mt-1 text-[10px] text-[#829699]">{active ? 'آخر اتصال منذ 42 ثانية' : 'شغّل الاتصال لاستعادة الحضور'}</p></div></div></div>
-            <div><label htmlFor="voice-channel" className="mb-2 block text-[11px] font-bold text-[#537178]">قناة المراقبة</label><select id="voice-channel" value={channel} onChange={(event) => setChannel(event.target.value)} data-testid="select-voice-channel" className="h-10 w-full rounded-xl border border-[#d4e0df] bg-[#f6faf9] px-3 text-xs text-[#46646b] outline-none focus:border-[#69b49f]"><option value="قاعة-الاستراحة">قاعة-الاستراحة</option><option value="المجلس">المجلس</option><option value="استوديو-البث">استوديو-البث</option></select></div>
-            <ControlRow title="الانضمام التلقائي" description="ينضم عند وصول أول عضو" checked={autoJoin} onToggle={() => setAutoJoin(!autoJoin)} icon={Headphones} testId="voice-auto-join" />
+            <div><label htmlFor="voice-channel" className="mb-2 block text-[11px] font-bold text-[#537178]">القناة الحالية</label><input id="voice-channel" value={channel} readOnly data-testid="select-voice-channel" className="h-10 w-full rounded-xl border border-[#d4e0df] bg-[#f6faf9] px-3 text-xs text-[#46646b] outline-none" /></div>
+            <ControlRow title="الانضمام التلقائي" description="غير متاح للتعديل من API الحالي" checked={false} onToggle={() => undefined} icon={Headphones} testId="voice-auto-join" />
           </div>
         </SectionCard>
       </div>
@@ -650,7 +684,7 @@ function SettingsPage({ state, toggle, setState }: { state: DashboardState; togg
       <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
         <SectionCard title="هوية الخادم" description="كيف يظهر Alythia لفريق الإشراف" testId="server-identity">
           <div className="space-y-4 px-5 py-5">
-            <div><label htmlFor="server-name" className="mb-2 block text-[11px] font-bold text-[#537178]">اسم الخادم</label><input id="server-name" value={state.serverName} onChange={(event) => { setSaved(false); setState((current) => ({ ...current, serverName: event.target.value })); }} data-testid="input-server-name" className="h-11 w-full rounded-xl border border-[#d4e0df] bg-[#f6faf9] px-3 text-sm text-[#46646b] outline-none focus:border-[#69b49f]" /></div>
+            <div><label htmlFor="server-name" className="mb-2 block text-[11px] font-bold text-[#537178]">اسم الخادم</label><input id="server-name" value={state.serverName ?? ''} onChange={(event) => { setSaved(false); setState((current) => ({ ...current, serverName: event.target.value })); }} data-testid="input-server-name" className="h-11 w-full rounded-xl border border-[#d4e0df] bg-[#f6faf9] px-3 text-sm text-[#46646b] outline-none focus:border-[#69b49f]" /></div>
             <div><label htmlFor="timezone" className="mb-2 block text-[11px] font-bold text-[#537178]">المنطقة الزمنية</label><select id="timezone" data-testid="select-timezone" className="h-11 w-full rounded-xl border border-[#d4e0df] bg-[#f6faf9] px-3 text-xs text-[#46646b] outline-none focus:border-[#69b49f]"><option>الرياض — GMT+3</option><option>دبي — GMT+4</option><option>القاهرة — GMT+2</option></select></div>
             <div><label htmlFor="language" className="mb-2 block text-[11px] font-bold text-[#537178]">لغة لوحة التحكم</label><select id="language" data-testid="select-dashboard-language" className="h-11 w-full rounded-xl border border-[#d4e0df] bg-[#f6faf9] px-3 text-xs text-[#46646b] outline-none focus:border-[#69b49f]"><option>العربية</option><option>English</option></select></div>
           </div>
@@ -669,17 +703,17 @@ function SettingsPage({ state, toggle, setState }: { state: DashboardState; togg
   );
 }
 
-function Router({ state, toggle, setState }: { state: DashboardState; toggle: (field: ToggleField) => void; setState: React.Dispatch<React.SetStateAction<DashboardState>> }) {
+function Router({ state, toggle, setState, refresh }: { state: DashboardState; toggle: (field: ToggleField) => void; setState: React.Dispatch<React.SetStateAction<DashboardState>>; refresh: () => void }) {
   const [location] = useLocation();
   return (
-    <Shell>
+    <Shell state={state}>
       <ErrorBoundary resetKey={location}>
         <Switch>
-          <Route path="/" component={() => <OverviewPage state={state} toggle={toggle} />} />
+          <Route path="/" component={() => <OverviewPage state={state} toggle={toggle} refresh={refresh} />} />
           <Route path="/moderation" component={() => <ModerationPage state={state} toggle={toggle} />} />
           <Route path="/community" component={() => <CommunityPage state={state} toggle={toggle} />} />
           <Route path="/economy" component={() => <EconomyPage state={state} toggle={toggle} />} />
-          <Route path="/voice" component={VoicePage} />
+          <Route path="/voice" component={() => <VoicePage state={state} />} />
           <Route path="/settings" component={() => <SettingsPage state={state} toggle={toggle} setState={setState} />} />
           <Route component={NotFound} />
         </Switch>
@@ -688,17 +722,28 @@ function Router({ state, toggle, setState }: { state: DashboardState; toggle: (f
   );
 }
 
-function App() {
-  const [state, setState] = useState<DashboardState>(initialState);
+function AppContent() {
+  const { data, isError, refetch } = useGetAlythiaStatus();
+  const [state, setState] = useState<DashboardState>(() => createDashboardState(data));
+  useEffect(() => {
+    setState(createDashboardState(data));
+  }, [data]);
   const toggle = (field: ToggleField) => setState((current) => ({ ...current, [field]: !current[field] }));
   return (
+    <TooltipProvider>
+      <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+        <Router state={state} toggle={toggle} setState={setState} refresh={() => { void refetch(); }} />
+      </WouterRouter>
+      {isError && <div className="fixed bottom-4 left-4 z-50 rounded-xl border border-[#e8c8c2] bg-[#fff7f5] px-4 py-3 text-xs font-semibold text-[#a45a51] shadow-lg">تعذر جلب حالة البوت من API.</div>}
+      <Toaster />
+    </TooltipProvider>
+  );
+}
+
+function App() {
+  return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-          <Router state={state} toggle={toggle} setState={setState} />
-        </WouterRouter>
-        <Toaster />
-      </TooltipProvider>
+      <AppContent />
     </QueryClientProvider>
   );
 }

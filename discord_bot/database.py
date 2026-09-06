@@ -166,6 +166,35 @@ class Database:
         self.connection.commit()
         return cursor.rowcount
 
+    def warning_count(self, guild_id: int) -> int:
+        return int(
+            self.connection.execute(
+                "SELECT COUNT(*) FROM warnings WHERE guild_id = ?", (guild_id,)
+            ).fetchone()[0]
+        )
+
+    def pending_suggestion_count(self, guild_id: int) -> int:
+        return int(
+            self.connection.execute(
+                "SELECT COUNT(*) FROM suggestions WHERE guild_id = ? AND status = 'pending'",
+                (guild_id,),
+            ).fetchone()[0]
+        )
+
+    def economy_user_count(self, guild_id: int) -> int:
+        return int(
+            self.connection.execute(
+                "SELECT COUNT(*) FROM economy WHERE guild_id = ?", (guild_id,)
+            ).fetchone()[0]
+        )
+
+    def level_user_count(self, guild_id: int) -> int:
+        return int(
+            self.connection.execute(
+                "SELECT COUNT(*) FROM levels WHERE guild_id = ?", (guild_id,)
+            ).fetchone()[0]
+        )
+
     def add_suggestion(
         self, guild_id: int, user_id: int, content: str, message_id: int | None = None
     ) -> int:

@@ -26,12 +26,18 @@ class Voice(commands.Cog):
             voice_client = current
         else:
             voice_client = cast(discord.VoiceClient, await channel.connect())
+        write_status = getattr(self.bot, "write_runtime_status", None)
+        if write_status:
+            write_status()
         return voice_client
 
     async def _leave_guild(self, guild: discord.Guild) -> bool:
         if not guild.voice_client:
             return False
         await guild.voice_client.disconnect(force=True)
+        write_status = getattr(self.bot, "write_runtime_status", None)
+        if write_status:
+            write_status()
         return True
 
     @voice.command(name="join", description="إدخال البوت إلى رومك الصوتي حتى إخراجه يدويًا")
